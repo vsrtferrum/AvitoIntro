@@ -1,0 +1,56 @@
+run:
+  deadline: 1m
+  tests: true
+  skip-dirs:
+    - pgdata
+    - bin
+    - migrations
+    - .logs
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    exclude-functions: []  
+  govet:
+    shadow: true 
+  golint:
+    min-confidence: 0.3
+  gocyclo:
+    min-complexity: 20
+  gocognit:
+    min-complexity: 30
+  dupl:
+    threshold: 200
+  nakedret:
+    max-func-lines: 50
+  funlen:
+    lines: 80
+    statements: 50
+
+linters:
+  enable-all: true
+  disable:
+    - forbidigo
+    - wrapcheck
+    - depguard
+    - exhaustivestruct  # Обратите внимание на правильное написание названия линтера
+    - exhaustruct
+    - gofumpt
+    - nosnakecase
+
+fast: false
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude:
+    - "should have comment"
+    - "always receives"
+    - "parameter .* is always"
+    - "comment on exported .* should be of the form"
+  exclude-dirs:
+    - ./pgdata 
+    - internal/storage/inmemory
+
+output:
+  formats: colored-line-number
