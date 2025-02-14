@@ -1,7 +1,8 @@
 package module
 
 type ModuleActions interface {
-	ListOfBuyedItems(id uint64) (*[][]byte, error)
-	SendedMoneyStat(id uint64) (*[][]byte, error)
-	RecievedMoneyStat(id uint64) (*[][]byte, error)
+	GetInfo(auth string) (*[][]byte, error)
+	SendMoney(auth string, toUser string, amount uint64) error
+	Buy(auth string, itemName string) error
+	Auth(name, passwordHash string) (string, error)
 }
