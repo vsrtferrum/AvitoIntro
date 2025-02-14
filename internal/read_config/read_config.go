@@ -1,5 +1,6 @@
 package readconfig
 
 type CacheModel struct {
-	AddrBuyedIems, AddrSendedMoneyStat, AddrRecievedMoneyStat string
+	Addr string
+	TTL  int
 }
