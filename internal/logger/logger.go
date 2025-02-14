@@ -18,13 +18,13 @@ func NewLogger(logPath string) (*Logger, error) {
 	infoCfg := zap.Config{
 		Encoding:    "json",
 		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-		OutputPaths: []string{"stdout", logPath + "/Info_" + timestamp + ".json"},
+		OutputPaths: []string{"stdout", logPath + "/info_" + timestamp + ".json"},
 	}
 
 	errorCfg := zap.Config{
 		Encoding:    "json",
 		Level:       zap.NewAtomicLevelAt(zap.ErrorLevel),
-		OutputPaths: []string{"stdout", logPath + "/Errors_" + timestamp + ".json"},
+		OutputPaths: []string{"stdout", logPath + "/errors_" + timestamp + ".json"},
 	}
 
 	infoLogger, err := infoCfg.Build()

@@ -11,6 +11,10 @@ type Transaction struct {
 	PersonName string `db:"name"`
 	Value      uint64 `db:"cost"`
 }
+type NamePassword struct {
+	Name     string `db:"name"`
+	Password string `db:"password"`
+}
 
 func (BuyedItem *BuyedItem) TransformBuyedItem() model.BuyedItem {
 	return model.BuyedItem{Item: BuyedItem.Item}

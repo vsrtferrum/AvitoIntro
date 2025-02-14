@@ -20,13 +20,13 @@ CREATE TRIGGER set_sales_date_of_purchase
 BEFORE INSERT ON sales
 FOR EACH ROW
 EXECUTE FUNCTION set_current_date();
-CREATE INDEX idx_customer_id on sales(customer_id);
+CREATE INDEX sales_idx_customer_id on sales(customer_id);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP INDEX IF EXISTS idx_customer_id;
+DROP INDEX IF EXISTS sales_idx_customer_id;
 DROP TRIGGER IF EXISTS set_sales_date_of_purchase ON sales;
 DROP TABLE sales;
 

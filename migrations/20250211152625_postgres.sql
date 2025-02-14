@@ -20,13 +20,13 @@ CREATE TRIGGER set_transfers_date_of_purchase
 BEFORE INSERT ON transfers
 FOR EACH ROW
 EXECUTE FUNCTION set_current_timestamp();
-CREATE INDEX idx_sender_id ON transfers (sender_id);
-CREATE INDEX idx_recipient_id ON transfers(recipient_id);
+CREATE INDEX transfers_idx_sender_id ON transfers (sender_id);
+CREATE INDEX transfers_idx_recipient_id ON transfers(recipient_id);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP INDEX IF EXISTS idx_recipient_id, idx_sender_id;
-DROP TRIGGER IF EXISTS set_transfers_date_of_purchase ON transfers;
+DROP INDEX IF EXISTS transfers_idx_sender_id ;
+DROP TRIGGER IF EXISTS transfers_idx_recipient_id ON transfers;
 DROP TABLE transfers;
 -- +goose StatementEnd

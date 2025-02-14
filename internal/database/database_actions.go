@@ -5,86 +5,153 @@ import (
 
 	"github.com/vsrtferrum/AvitoIntro/internal/errors"
 	"github.com/vsrtferrum/AvitoIntro/internal/model"
-	"github.com/vsrtferrum/AvitoIntro/internal/transform"
 )
 
 type DatabaseActions interface {
-	ListOfBuyedItems(id uint64) (*[]model.BuyedItem, error)
-	SendedMoneyStat(id uint64) (*[]model.Transaction, error)
-	RecievedMoneyStat(id uint64) (*[]model.Transaction, error)
+	TransactionsInfo(id uint64) (*[]model.AllTransactionInfo, error)
+	Auth(name, password string) (bool, error)
+	BuyItem(idUser uint64, itemName string) error
+	SendMoney(id uint64, toUser string, amount uint64) error
 }
 
-func (db *Database) ListOfBuyedItems(id uint64) (*[]model.BuyedItem, error) {
-	rows, err := db.pool.Query(context.Background(), "SELECT shop.name"+
-		"FROM sales"+
-		"JOIN shop ON sales.item_id = shop.id"+
-		"WHERE id = $1", id)
-
+func (database *Database) Transaction(id uint64) (*model.AllTransactionInfo, error) {
+	listOfBuyedItems, err := database.listOfBuyedItems(id)
 	if err != nil {
-		db.log.WriteError(err)
-		return nil, errors.ErrResultQuery
+		return nil, err
 	}
-	defer rows.Close()
-
-	res := make([]model.BuyedItem, 0)
-	var temp transform.BuyedItem
-	for rows.Next() {
-		err = rows.Scan(&temp)
-		if err != nil {
-			db.log.WriteError(err)
-			return nil, errors.ErrResultQuery
-		}
-		res = append(res, temp.TransformBuyedItem())
+	sendedMoney, err := database.sendedMoneyStat(id)
+	if err != nil {
+		return nil, err
 	}
-	return &res, nil
+	recievedMoney, err := database.recievedMoneyStat(id)
+	if err != nil {
+		return nil, err
+	}
+	return &model.AllTransactionInfo{BuyedItem: listOfBuyedItems, SendedMoney: sendedMoney,
+		RecievedMoney: recievedMoney}, nil
 }
 
-func (db *Database) SendedMoneyStat(id uint64) (*[]model.Transaction, error) {
-	rows, err := db.pool.Query(context.Background(), "SELECT users.name, users.id, transations.cost"+
-		"FROM users"+
-		"JOIN transations ON transations.sender_id = users.id"+
-		"WHERE id = $1", id)
+func (database *Database) Auth(data model.NamePassword) (uint64, error) {
 
+	rows, err := database.pool.Query(context.Background(), authUser, data.Name, data.Password)
 	if err != nil {
-		db.log.WriteError(err)
-		return nil, errors.ErrResultQuery
+		database.log.WriteError(err)
+		return 0, errors.ErrResultQuery
 	}
+	res := make([]uint64, 0, 1)
+	var temp uint64
 	defer rows.Close()
-
-	res := make([]model.Transaction, 0)
-	var temp transform.Transaction
 	for rows.Next() {
-		err = rows.Scan(&temp)
-		if err != nil {
-			db.log.WriteError(err)
-			return nil, errors.ErrResultQuery
+		rows.Scan(&temp)
+		res = append(res, temp)
+		if len(res) > 1 {
+			database.log.WriteError(errors.ErrNonDeterministicUsers)
+			return 0, errors.ErrNonDeterministicUsers
 		}
-		res = append(res, temp.TransformTransaction())
 	}
-	return &res, nil
+	return res[0], nil
+}
+func (database *Database) BuyItem(idUser uint64, itemName string) error {
+	balance, err := database.getUserBalance(idUser)
+	if err != nil {
+		return err
+	}
+
+	itemCost, err := database.getItemCost(itemName)
+	if err != nil {
+		return err
+	}
+
+	if balance < itemCost {
+		return errors.ErrSmallBalance
+	}
+
+	tx, err := database.pool.Begin(context.Background())
+	if err != nil {
+		database.log.WriteError(err)
+		return errors.ErrCreateTransaction
+	}
+	_, err = tx.Exec(context.Background(), updateBalance, balance-itemCost, idUser)
+	if err != nil {
+		database.log.WriteError(err)
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			database.log.WriteError(err)
+		}
+		return errors.ErrExecTransaction
+	}
+
+	_, err = tx.Exec(context.Background(), insertSale, idUser, itemName, itemCost)
+	if err != nil {
+		database.log.WriteError(err)
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			database.log.WriteError(err)
+		}
+		return errors.ErrExecTransaction
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		database.log.WriteError(err)
+		return errors.ErrCommitTransaction
+	}
+	return nil
 }
 
-func (db *Database) RecievedMoneyStat(id uint64) (*[]model.Transaction, error) {
-	rows, err := db.pool.Query(context.Background(), "SELECT users.name, users.id, transations.cost"+
-		"FROM users"+
-		"JOIN transations ON transations.recipient_id = users.id"+
-		"WHERE id = $1", id)
-
+func (database *Database) SendMoney(idUser uint64, toUser string, amount uint64) error {
+	balanceSender, err := database.getUserBalance(idUser)
 	if err != nil {
-		db.log.WriteError(err)
-		return nil, errors.ErrResultQuery
+		return err
 	}
-	defer rows.Close()
 
-	res := make([]model.Transaction, 0)
-	var temp transform.Transaction
-	for rows.Next() {
-		err = rows.Scan(&temp)
-		if err != nil {
-			db.log.WriteError(err)
-			return nil, errors.ErrResultQuery
-		}
-		res = append(res, temp.TransformTransaction())
+	if balanceSender < amount {
+		database.log.WriteError(errors.ErrSmallBalance)
+		return errors.ErrSmallBalance
 	}
-	return &res, nil
+	balanceReciever, err := database.getUserBalance(idUser)
+	if err != nil {
+		return err
+	}
+	tx, err := database.pool.Begin(context.Background())
+	if err != nil {
+		database.log.WriteError(err)
+		return errors.ErrCreateTransaction
+	}
+	_, err = tx.Exec(context.Background(), updateBalance, balanceSender-amount, idUser)
+	if err != nil {
+		database.log.WriteError(err)
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			database.log.WriteError(err)
+		}
+		return errors.ErrExecTransaction
+	}
+
+	_, err = tx.Exec(context.Background(), updateBalance, balanceReciever+amount, toUser)
+	if err != nil {
+		database.log.WriteError(err)
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			database.log.WriteError(err)
+		}
+		return errors.ErrExecTransaction
+	}
+
+	_, err = tx.Exec(context.Background(), insertTransfer, idUser, toUser, amount)
+	if err != nil {
+		database.log.WriteError(err)
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			database.log.WriteError(err)
+		}
+		return errors.ErrExecTransaction
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		database.log.WriteError(err)
+		return errors.ErrCommitTransaction
+	}
+	return nil
 }
