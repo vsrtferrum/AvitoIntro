@@ -12,7 +12,6 @@ var (
 	ErrResultQuery           = errors.New("error nil result")
 	ErrNonDeterministicUsers = errors.New("error non unique user")
 	ErrCreateTransaction     = errors.New("error create transaction")
-	ErrSmallBalance          = errors.New("error balance size")
 	ErrExecTransaction       = errors.New("error exec transaction")
 	ErrCommitTransaction     = errors.New("error commit transaction")
 )

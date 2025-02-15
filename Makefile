@@ -10,6 +10,8 @@ MIGRATION_FOLDER = $(CURDIR)/migrations
 	go get -u github.com/jackc/pgx/v5/pgxpool
 	go get -u go.uber.org/zap
 	go get -u github.com/redis/go-redis/v9
+	go get -u golang.org/x/crypto/bcrypt
+	go get -u github.com/golang-jwt/jwt/v5
 
 
 .bin-deps:

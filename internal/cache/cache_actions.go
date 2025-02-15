@@ -26,10 +26,10 @@ func (cache *Cache) Get(cntx context.Context, id uint64) (*[][]byte, error) {
 	return &resJson, nil
 }
 
-func (cache *Cache) Set(cntx context.Context, query string, data *[][]byte) error {
+func (cache *Cache) Set(cntx context.Context, id string, data *[][]byte) error {
 	temp, err := json.Marshal(data)
 	if err != nil {
 		return errors.ErrJsonMarshall
 	}
-	return cache.cache.Set(cntx, query, temp, cache.ttl).Err()
+	return cache.cache.Set(cntx, id, temp, cache.ttl).Err()
 }

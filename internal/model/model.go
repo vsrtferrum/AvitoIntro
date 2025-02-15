@@ -8,6 +8,13 @@ type Transaction struct {
 	PersonName string
 	Value      uint64
 }
+type IdPassword struct {
+	Id           uint64
+	PasswordHash string
+}
+type ItemIdCost struct {
+	Id, Cost uint64
+}
 type AllTransactionInfo struct {
 	BuyedItem     *[]BuyedItem
 	SendedMoney   *[]Transaction

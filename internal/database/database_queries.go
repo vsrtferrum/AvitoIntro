@@ -5,9 +5,12 @@ var (
 		FROM sales
 		JOIN shop ON sales.item_id = shop.id
 		WHERE id = $1`
-	getUserBalance string = `SELECT balance
+	getUserBalanceById string = `SELECT balance
 		FROM users
 		WHERE id = $1`
+	getUserBalanceByName string = `SELECT balance
+		FROM users
+		WHERE name = $1`
 	getItemCost string = `SELECT cost
 		FROM shop
 		WHERE name = $1`
@@ -19,12 +22,15 @@ var (
 		FROM users+
 		JOIN transations ON transations.recipient_id = users.id
 		WHERE id = $1`
-	authUser string = `SELECT id
+	authUser string = `SELECT id, password
 		FROM users
 		WHERE name = $1 AND password = $2`
-	updateBalance string = `UPDATE users
+	updateBalanceById string = `UPDATE users
 		SET balance = $1 
-		WHERE user = $2`
+		WHERE id = $2`
+	updateBalanceByName string = `UPDATE users
+		SET balance = $1 
+		WHERE name = $2`
 	insertSale string = `INSERT INTO sales
 		(customer_id, item_id, cost) 
 		$1, $2, $3`
