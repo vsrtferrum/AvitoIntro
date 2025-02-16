@@ -15,6 +15,7 @@ type DatabaseActions interface {
 	SendMoney(id uint64, toUser string, amount uint64) error
 	GetUserBalanceById(id uint64) (uint64, error)
 	GetUserBalanceByName(name string) (uint64, error)
+	GetUserIdByName(name string) (uint64, error)
 	GetItemCost(itemName string) (model.ItemIdCost, error)
 }
 
@@ -50,10 +51,10 @@ func (database *Database) Auth(data model.AuthRequest) (model.IdPassword, error)
 	var temp transform.IdPassword
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&temp)
+		err := rows.Scan(&temp.Id, &temp.PasswordHash)
 		if err != nil {
 			database.log.WriteError(err)
-			return model.IdPassword{}, errors.ErrGetValue
+			break
 		}
 		res = append(res, temp.TransformIdPassword())
 		if len(res) > 1 {
@@ -71,6 +72,7 @@ func (database *Database) Auth(data model.AuthRequest) (model.IdPassword, error)
 	}
 	return res[0], nil
 }
+
 func (database *Database) BuyItem(idUser, idItem uint64, newBalance, itemCost uint64) error {
 
 	tx, err := database.pool.Begin(context.Background())
@@ -91,9 +93,9 @@ func (database *Database) BuyItem(idUser, idItem uint64, newBalance, itemCost ui
 	_, err = tx.Exec(context.Background(), insertSale, idUser, idItem, itemCost)
 	if err != nil {
 		database.log.WriteError(err)
-		err = tx.Rollback(context.Background())
-		if err != nil {
-			database.log.WriteError(err)
+		errRollback := tx.Rollback(context.Background())
+		if errRollback != nil {
+			database.log.WriteError(errRollback)
 		}
 		return errors.ErrExecTransaction
 	}
@@ -107,6 +109,11 @@ func (database *Database) BuyItem(idUser, idItem uint64, newBalance, itemCost ui
 }
 
 func (database *Database) SendMoney(idUser uint64, toUser string, amount, newBalanceSender, newBalanceReciever uint64) error {
+	idToUser, err := database.GetUserIdByName(toUser)
+	if err != nil {
+		database.log.WriteError(err)
+		return errors.ErrExecQuery
+	}
 	tx, err := database.pool.Begin(context.Background())
 	if err != nil {
 		database.log.WriteError(err)
@@ -122,7 +129,7 @@ func (database *Database) SendMoney(idUser uint64, toUser string, amount, newBal
 		return errors.ErrExecTransaction
 	}
 
-	_, err = tx.Exec(context.Background(), updateBalanceByName, newBalanceReciever, toUser)
+	_, err = tx.Exec(context.Background(), updateBalanceById, newBalanceReciever, idToUser)
 	if err != nil {
 		database.log.WriteError(err)
 		err = tx.Rollback(context.Background())
@@ -132,7 +139,7 @@ func (database *Database) SendMoney(idUser uint64, toUser string, amount, newBal
 		return errors.ErrExecTransaction
 	}
 
-	_, err = tx.Exec(context.Background(), insertTransfer, idUser, toUser, amount)
+	_, err = tx.Exec(context.Background(), insertTransfer, idUser, idToUser, amount)
 	if err != nil {
 		database.log.WriteError(err)
 		err = tx.Rollback(context.Background())
@@ -175,6 +182,7 @@ func (database *Database) GetUserBalanceById(id uint64) (uint64, error) {
 	}
 	return res[0], nil
 }
+
 func (database *Database) GetUserBalanceByName(name string) (uint64, error) {
 	rows, err := database.pool.Query(context.Background(), getUserBalanceByName, name)
 	if err != nil {
@@ -211,7 +219,7 @@ func (database *Database) GetItemCost(itemName string) (model.ItemIdCost, error)
 	var temp transform.ItemIdCost
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&temp)
+		err := rows.Scan(&temp.Cost, &temp.Id)
 		if err != nil {
 			database.log.WriteError(err)
 			return model.ItemIdCost{}, errors.ErrGetValue
@@ -221,6 +229,32 @@ func (database *Database) GetItemCost(itemName string) (model.ItemIdCost, error)
 		if len(res) > 1 {
 			database.log.WriteError(errors.ErrNonDeterministicUsers)
 			return model.ItemIdCost{}, errors.ErrNonDeterministicUsers
+		}
+	}
+	return res[0], nil
+}
+
+func (database *Database) GetUserIdByName(name string) (uint64, error) {
+	rows, err := database.pool.Query(context.Background(), getIdByName, name)
+	if err != nil {
+		database.log.WriteError(err)
+		return 0, errors.ErrResultQuery
+	}
+
+	res := make([]uint64, 0, 1)
+	var temp uint64
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&temp)
+		if err != nil {
+			database.log.WriteError(err)
+			return 0, errors.ErrGetValue
+		}
+
+		res = append(res, temp)
+		if len(res) > 1 {
+			database.log.WriteError(errors.ErrNonDeterministicUsers)
+			return 0, errors.ErrNonDeterministicUsers
 		}
 	}
 	return res[0], nil

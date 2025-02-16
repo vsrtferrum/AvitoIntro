@@ -8,13 +8,16 @@ var (
 		GROUP BY shop.name;`
 	getUserBalanceById string = `SELECT balance
 		FROM users
-		WHERE id = $1`
+		WHERE id = $1;`
 	getUserBalanceByName string = `SELECT balance
 		FROM users
-		WHERE name = $1`
+		WHERE name = $1;`
 	getItemCost string = `SELECT cost
 		FROM shop
-		WHERE name = $1`
+		WHERE name = $1;`
+	getIdByName string = `SELECT id
+		FROM users
+		WHERE name = $1;`
 	sendedMoneyStat string = `
 		SELECT 
 			sender.name AS sender_name,  
@@ -23,8 +26,7 @@ var (
 		FROM transfers
 		JOIN users AS sender ON transfers.sender_id = sender.id
 		JOIN users AS recipient ON transfers.recipient_id = recipient.id
-		WHERE sender.id = $1;
-		`
+		WHERE sender.id = $1;`
 	recievedMoneyStat string = `
 		SELECT 
 			sender.name AS sender_name,  
@@ -33,24 +35,21 @@ var (
 		FROM transfers
 		JOIN users AS sender ON transfers.sender_id = sender.id
 		JOIN users AS recipient ON transfers.recipient_id = recipient.id
-		WHERE recipient.id = $1;
-		`
+		WHERE recipient.id = $1;`
 	authUser string = `SELECT id, password
 		FROM users
-		WHERE name = $1 AND password = $2`
+		WHERE name = $1 AND password = $2;`
 	updateBalanceById string = `UPDATE users
 		SET balance = $1 
-		WHERE id = $2`
-	updateBalanceByName string = `UPDATE users
-		SET balance = $1 
-		WHERE name = $2`
+		WHERE id = $2;`
 	insertSale string = `INSERT INTO sales
-		(customer_id, item_id, cost) 
-		$1, $2, $3`
+		(customer_id, item_id, cost)
+		VALUES ($1, $2, $3);`
 	insertTransfer string = `INSERT INTO transfers
 		(sender_id, recipient_id, cost) 
-		$1, $2, $3`
+		VALUES ($1, $2, $3);`
 	insertUser string = `INSERT INTO users
 		(name, password, balance)
-		$1 , $2, 1000`
+		VALUES 
+		($1 , $2, 1000);`
 )
