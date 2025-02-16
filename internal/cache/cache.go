@@ -5,7 +5,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/vsrtferrum/AvitoIntro/internal/errors"
-	readconfig "github.com/vsrtferrum/AvitoIntro/internal/read_config"
+	"github.com/vsrtferrum/AvitoIntro/internal/model"
 )
 
 type Cache struct {
@@ -14,7 +14,7 @@ type Cache struct {
 	CacheActions
 }
 
-func NewCahce(cacheModel readconfig.CacheModel) (Cache, error) {
+func NewCahce(cacheModel model.CacheModel) (Cache, error) {
 	cache := redis.NewClient(&redis.Options{
 		Addr:     cacheModel.Addr,
 		Password: "",

@@ -31,11 +31,10 @@ func (auth *Auth) GenerateFromPassword(data model.IdPassword) (string, error) {
 	}
 
 	tokenHash := sha256Hash(tokenString)
-	auth.userMap[tokenHash] = data.Id
-
+	auth.userMap[tokenHash] = model.AuthAns{Id: data.Id, Username: data.Username}
 	return tokenString, nil
 }
-func (auth *Auth) Identify(token string) (val uint64, ok bool) {
+func (auth *Auth) Identify(token string) (val model.AuthAns, ok bool) {
 	val, ok = auth.userMap[token]
 	return
 }

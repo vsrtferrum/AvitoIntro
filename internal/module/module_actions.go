@@ -13,6 +13,7 @@ import (
 type ModuleActions interface {
 	Auth(name, password string) (string, error)
 	Buy(token string, itemName string) error
+	Identify(token string) bool
 	GetInfo(token string) (*[][]byte, error)
 	SendMoney(token string, RecieverName string, amount uint64) error
 }
@@ -24,7 +25,7 @@ func (module *Module) Auth(name, password string) (token string, err error) {
 		return "", errors.ErrGenerateHash
 	}
 
-	data, err := module.database.Auth(model.NamePassword{Name: name, Password: string(passwordHashed)})
+	data, err := module.database.Auth(model.AuthRequest{Username: name, Password: string(passwordHashed)})
 	if err != nil {
 		module.logger.WriteError(err)
 		return "", err
@@ -38,12 +39,18 @@ func (module *Module) Auth(name, password string) (token string, err error) {
 	token, err = module.auth.GenerateFromPassword(data)
 	return
 }
+
+func (module *Module) Identify(token string) bool {
+	_, ok := module.auth.Identify(token)
+	return ok
+}
+
 func (module *Module) Buy(token string, itemName string) (err error) {
 	id, err := module.authByToken(token)
 	if err != nil {
 		return err
 	}
-	balance, err := module.database.GetUserBalanceById(id)
+	balance, err := module.database.GetUserBalanceById(id.Id)
 	if err != nil {
 		module.logger.WriteError(err)
 		return errors.ErrExecQuery
@@ -60,7 +67,7 @@ func (module *Module) Buy(token string, itemName string) (err error) {
 		return errors.ErrSmallBalance
 	}
 
-	err = module.database.BuyItem(id, item.Id, balance-item.Cost, item.Cost)
+	err = module.database.BuyItem(id.Id, item.Id, balance-item.Cost, item.Cost)
 	if err != nil {
 		module.logger.WriteError(err)
 		return errors.ErrExecQuery
@@ -68,40 +75,46 @@ func (module *Module) Buy(token string, itemName string) (err error) {
 	return
 }
 
-func (module *Module) GetInfo(token string) (*[][]byte, error) {
+func (module *Module) GetInfo(token string) (*model.InfoResponse, error) {
 	id, err := module.authByToken(token)
 	if err != nil {
 		return nil, err
 	}
-	cahceData, err := module.cache.Get(context.Background(), id)
+	cahceData, err := module.cache.Get(context.Background(), id.Id)
 	if err == nil {
-		return cahceData, err
+		data, err := transform.UnmarshalInfoResponse(cahceData)
+		if err != nil {
+			module.logger.WriteError(err)
+		} else {
+			return data, err
+		}
+
 	}
-	data, err := module.database.TransactionsInfo(id)
+	data, err := module.database.TransactionsInfo(id.Id)
 	if err != nil {
 		module.logger.WriteError(err)
 		return nil, err
 	}
 
-	marshalledData, err := transform.MarshalAllTransactionInfo(data)
+	marshalledData, err := transform.MarshalAllTransactionInfo(data, id.Username)
 	if err != nil {
 		module.logger.WriteError(err)
 		return nil, err
 	}
 
-	err = module.cache.Set(context.Background(), strconv.FormatUint(id, 10), marshalledData)
+	err = module.cache.Set(context.Background(), strconv.FormatUint(id.Id, 10), marshalledData)
 	if err != nil {
 		module.logger.WriteError(err)
 		module.logger.WriteError(errors.ErrSetValue)
 	}
-	return marshalledData, err
+	return data, err
 }
 func (module *Module) SendMoney(token string, RecieverName string, amount uint64) error {
 	idSender, err := module.authByToken(token)
 	if err != nil {
 		return err
 	}
-	balanceSender, err := module.database.GetUserBalanceById(idSender)
+	balanceSender, err := module.database.GetUserBalanceById(idSender.Id)
 	if err != nil {
 		module.logger.WriteError(err)
 		return errors.ErrExecQuery
@@ -118,7 +131,7 @@ func (module *Module) SendMoney(token string, RecieverName string, amount uint64
 		return errors.ErrExecQuery
 	}
 
-	err = module.database.SendMoney(idSender, RecieverName, amount, balanceSender-amount, balanceReciever+amount)
+	err = module.database.SendMoney(idSender.Id, RecieverName, amount, balanceSender-amount, balanceReciever+amount)
 	if err != nil {
 		module.logger.WriteError(err)
 		return errors.ErrExecQuery

@@ -1,0 +1,9 @@
+{
+    "connStr":"postgresql://user:5432@localhost:5430/Avito_Merch", 
+    "logPath":".logs", 
+    "cacheAddr":"localhost:6379",
+    "TTL": 90, 
+    "TTLJWT": 5, 
+    "workersCount": 10, 
+    "workersQueueLen": 100
+}

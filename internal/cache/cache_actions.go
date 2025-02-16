@@ -5,31 +5,33 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/vsrtferrum/AvitoIntro/internal/errors"
 )
 
 type CacheActions interface {
-	Get(cntx context.Context, id uint64) (*[][]byte, error)
-	Set(cntx context.Context, query string, data *[][]byte) error
+	Get(cntx context.Context, id uint64) (*[]byte, error)
+	Set(cntx context.Context, query string, data *[]byte) error
 }
 
-func (cache *Cache) Get(cntx context.Context, id uint64) (*[][]byte, error) {
-	data, err := cache.cache.Get(context.Background(), strconv.FormatUint(id, 10)).Result()
+func (cache *Cache) Get(cntx context.Context, id uint64) (*[]byte, error) {
+	data, err := cache.cache.Get(cntx, strconv.FormatUint(id, 10)).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return nil, errors.ErrGetValue
+		}
 		return nil, errors.ErrGetValue
 	}
-	var resJson [][]byte
-	err = json.Unmarshal([]byte(data), &resJson)
-	if err != nil {
-		return nil, errors.ErrJsonMarshall
-	}
-	return &resJson, nil
+
+	result := []byte(data)
+	return &result, nil
 }
 
-func (cache *Cache) Set(cntx context.Context, id string, data *[][]byte) error {
-	temp, err := json.Marshal(data)
+func (cache *Cache) Set(cntx context.Context, id string, data *[]byte) error {
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return errors.ErrJsonMarshall
 	}
-	return cache.cache.Set(cntx, id, temp, cache.ttl).Err()
+
+	return cache.cache.Set(cntx, id, jsonData, cache.ttl).Err()
 }

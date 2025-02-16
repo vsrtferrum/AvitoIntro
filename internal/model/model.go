@@ -1,25 +1,62 @@
 package model
 
-type BuyedItem struct {
-	Item string
+type InfoResponse struct {
+	Coins       uint64
+	Inventory   *[]InventoryItem
+	CoinHistory CoinHistory
 }
-type Transaction struct {
-	Id         uint
-	PersonName string
-	Value      uint64
+
+type InventoryItem struct {
+	Type     string
+	Quantity int64
 }
+
+type CoinHistory struct {
+	Received *[]CoinTransaction
+	Sent     *[]CoinTransaction
+}
+type AuthAns struct {
+	Id       uint64
+	Username string
+}
+
 type IdPassword struct {
 	Id           uint64
 	PasswordHash string
+	Username     string
 }
 type ItemIdCost struct {
 	Id, Cost uint64
 }
-type AllTransactionInfo struct {
-	BuyedItem     *[]BuyedItem
-	SendedMoney   *[]Transaction
-	RecievedMoney *[]Transaction
+
+type CoinTransaction struct {
+	FromUser string
+	ToUser   string
+	Amount   int64
 }
-type NamePassword struct {
-	Name, Password string
+
+type ErrorResponse struct {
+	Errors string
+}
+
+type AuthRequest struct {
+	Username string
+	Password string
+}
+
+type AuthResponse struct {
+	Token string
+}
+
+type SendCoinRequest struct {
+	ToUser string
+	Amount int
+}
+
+type CacheModel struct {
+	Addr string
+	TTL  int
+}
+type WorkersModel struct {
+	WorkersCount, WorkersQueueLen int
 }

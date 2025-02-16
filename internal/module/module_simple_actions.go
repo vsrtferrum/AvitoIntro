@@ -1,12 +1,15 @@
 package module
 
-import "github.com/vsrtferrum/AvitoIntro/internal/errors"
+import (
+	"github.com/vsrtferrum/AvitoIntro/internal/errors"
+	"github.com/vsrtferrum/AvitoIntro/internal/model"
+)
 
-func (module *Module) authByToken(token string) (uint64, error) {
-	id, ok := module.auth.Identify(token)
+func (module *Module) authByToken(token string) (model.AuthAns, error) {
+	val, ok := module.auth.Identify(token)
 	if !ok {
 		module.logger.WriteError(errors.ErrNoUserFound)
-		return 0, errors.ErrNoUserFound
+		return model.AuthAns{}, errors.ErrNoUserFound
 	}
-	return id, nil
+	return val, nil
 }

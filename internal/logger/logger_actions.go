@@ -11,13 +11,13 @@ type LoggerActions interface {
 	WriteStatus(msg string) error
 }
 
-func (l *Logger) WriteError(msg error) error {
+func (l *Logger) WriteError(msg error) {
 	if l.errorLogger == nil {
-		return errors.New("error logger is not initialized")
+		panic(errors.New("error logger is not initialized"))
 	}
 
 	l.errorLogger.Error("Error", zap.Error(msg))
-	return nil
+
 }
 
 func (l *Logger) WriteStatus(msg string) error {

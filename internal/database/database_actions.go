@@ -9,7 +9,7 @@ import (
 )
 
 type DatabaseActions interface {
-	TransactionsInfo(id uint64) (*model.AllTransactionInfo, error)
+	TransactionsInfo(id uint64) (*model.InfoResponse, error)
 	Auth(name, password string) (model.IdPassword, error)
 	BuyItem(idUser uint64, itemName string) error
 	SendMoney(id uint64, toUser string, amount uint64) error
@@ -18,7 +18,11 @@ type DatabaseActions interface {
 	GetItemCost(itemName string) (model.ItemIdCost, error)
 }
 
-func (database *Database) Transaction(id uint64) (*model.AllTransactionInfo, error) {
+func (database *Database) Transaction(id uint64) (*model.InfoResponse, error) {
+	balance, err := database.GetUserBalanceById(id)
+	if err != nil {
+		return nil, err
+	}
 	listOfBuyedItems, err := database.listOfBuyedItems(id)
 	if err != nil {
 		return nil, err
@@ -31,13 +35,13 @@ func (database *Database) Transaction(id uint64) (*model.AllTransactionInfo, err
 	if err != nil {
 		return nil, err
 	}
-	return &model.AllTransactionInfo{BuyedItem: listOfBuyedItems, SendedMoney: sendedMoney,
-		RecievedMoney: recievedMoney}, nil
+	return &model.InfoResponse{Coins: balance, Inventory: listOfBuyedItems,
+		CoinHistory: model.CoinHistory{Sent: sendedMoney, Received: recievedMoney}}, nil
 }
 
-func (database *Database) Auth(data model.NamePassword) (model.IdPassword, error) {
+func (database *Database) Auth(data model.AuthRequest) (model.IdPassword, error) {
 
-	rows, err := database.pool.Query(context.Background(), authUser, data.Name, data.Password)
+	rows, err := database.pool.Query(context.Background(), authUser, data.Username, data.Password)
 	if err != nil {
 		database.log.WriteError(err)
 		return model.IdPassword{}, errors.ErrResultQuery
@@ -46,12 +50,24 @@ func (database *Database) Auth(data model.NamePassword) (model.IdPassword, error
 	var temp transform.IdPassword
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&temp)
+		err := rows.Scan(&temp)
+		if err != nil {
+			database.log.WriteError(err)
+			return model.IdPassword{}, errors.ErrGetValue
+		}
 		res = append(res, temp.TransformIdPassword())
 		if len(res) > 1 {
 			database.log.WriteError(errors.ErrNonDeterministicUsers)
 			return model.IdPassword{}, errors.ErrNonDeterministicUsers
 		}
+	}
+	if len(res) == 0 {
+		err := database.insertUser(data)
+		if err != nil {
+			database.log.WriteError(err)
+			return model.IdPassword{}, errors.ErrResultQuery
+		}
+		return database.Auth(data)
 	}
 	return res[0], nil
 }
@@ -145,7 +161,12 @@ func (database *Database) GetUserBalanceById(id uint64) (uint64, error) {
 	var temp uint64
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&temp)
+		err := rows.Scan(&temp)
+		if err != nil {
+			database.log.WriteError(err)
+			return 0, errors.ErrGetValue
+		}
+
 		res = append(res, temp)
 		if len(res) > 1 {
 			database.log.WriteError(errors.ErrNonDeterministicUsers)
@@ -165,7 +186,11 @@ func (database *Database) GetUserBalanceByName(name string) (uint64, error) {
 	var temp uint64
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&temp)
+		err := rows.Scan(&temp)
+		if err != nil {
+			database.log.WriteError(err)
+			return 0, errors.ErrGetValue
+		}
 		res = append(res, temp)
 		if len(res) > 1 {
 			database.log.WriteError(errors.ErrNonDeterministicUsers)
@@ -186,7 +211,12 @@ func (database *Database) GetItemCost(itemName string) (model.ItemIdCost, error)
 	var temp transform.ItemIdCost
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&temp)
+		err := rows.Scan(&temp)
+		if err != nil {
+			database.log.WriteError(err)
+			return model.ItemIdCost{}, errors.ErrGetValue
+		}
+
 		res = append(res, temp.TransformItemIdCost())
 		if len(res) > 1 {
 			database.log.WriteError(errors.ErrNonDeterministicUsers)
