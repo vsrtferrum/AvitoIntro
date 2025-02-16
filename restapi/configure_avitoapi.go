@@ -53,7 +53,7 @@ func configureAPI(api *operations.AvitoapiAPI) http.Handler {
 		return nil
 	}
 
-	db := database.NewDatabase(dbCfg)
+	db := database.NewDatabase(dbCfg, logger)
 	err = db.Connect()
 	if err != nil {
 		logger.WriteError(err)

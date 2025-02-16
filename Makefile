@@ -19,6 +19,7 @@ API_LOCATION := $(CURDIR)/docs
 	go get -u github.com/jessevdk/go-flags
 	go get -u golang.org/x/net/netutil
 	go get -u github.com/go-openapi/runtime/flagext
+	go get -u github.com/stretchr/testify/assert
 
 
 .bin-deps:
@@ -54,3 +55,9 @@ linter:
 	golangci-lint run
 generate-api:
 	bin/swagger generate server -f $(API_LOCATION)/api.json  -A avitoapi 
+up-avitoapi: 
+	docker-compose up -d avitoapi
+rebuild-avitoapi: 
+	docker-compose down && docker-compose up --build
+test-db-up:
+	docker-compose -f docker-compose.test.yml up -d

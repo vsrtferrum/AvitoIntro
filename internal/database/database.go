@@ -13,6 +13,6 @@ type Database struct {
 	DatabaseActions
 }
 
-func NewDatabase(connStr string) Database {
-	return Database{connStr: connStr}
+func NewDatabase(connStr string, logger *logger.Logger) Database {
+	return Database{connStr: connStr, log: logger}
 }
